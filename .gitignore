@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+# the course data (Canvas, Files) is not redistributed; place train_data.npy and test_data.npy in data/
+data
+data/
+report/*.aux
+report/*.log
+report/*.out
+report/report_build.md
+# trained weights (81 MB); scripts/run_all.sh regenerates the ones the scripts read
+final_weights.pt
+*.nomad
+nohup.out

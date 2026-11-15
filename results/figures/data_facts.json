@@ -1,0 +1,126 @@
+{
+ "n_clients": 100,
+ "n_total": 31825,
+ "n_min": 118,
+ "n_max": 393,
+ "n_median": 331.0,
+ "majority_class": "O",
+ "majority_share": 0.05772191673212883,
+ "rarest_class": "j",
+ "rarest_count": 56,
+ "share_digits": 0.29904163393558525,
+ "share_upper": 0.392050274941084,
+ "share_lower": 0.30890809112333073,
+ "classes_present_min": 37,
+ "classes_present_median": 56.0,
+ "classes_present_max": 61,
+ "tv_mean": 0.18461244292377746,
+ "tv_min": 0.10718869555343916,
+ "tv_max": 0.35479462633309816,
+ "tv_iid_mean": 0.1571556188545252,
+ "tv_iid_max": 0.3377850266952482,
+ "tv_train_test": 0.05265317766463543,
+ "imbalance_ratio": 32.80357142857143,
+ "chosen": {
+  "fewest images": {
+   "client": 25,
+   "n": 118,
+   "classes": 41,
+   "tv": 0.35479462633309816,
+   "top": [
+    [
+     "7",
+     11
+    ],
+    [
+     "0",
+     8
+    ],
+    [
+     "1",
+     7
+    ]
+   ]
+  },
+  "most images": {
+   "client": 67,
+   "n": 393,
+   "classes": 60,
+   "tv": 0.13299816705943968,
+   "top": [
+    [
+     "e",
+     30
+    ],
+    [
+     "l",
+     25
+    ],
+    [
+     "O",
+     24
+    ]
+   ]
+  },
+  "fewest classes": {
+   "client": 36,
+   "n": 228,
+   "classes": 37,
+   "tv": 0.309413459020686,
+   "top": [
+    [
+     "l",
+     13
+    ],
+    [
+     "T",
+     12
+    ],
+    [
+     "N",
+     12
+    ]
+   ]
+  },
+  "closest to pooled mix": {
+   "client": 76,
+   "n": 339,
+   "classes": 59,
+   "tv": 0.10718869555343916,
+   "top": [
+    [
+     "t",
+     22
+    ],
+    [
+     "e",
+     20
+    ],
+    [
+     "O",
+     18
+    ]
+   ]
+  },
+  "largest single-class share": {
+   "client": 86,
+   "n": 325,
+   "classes": 54,
+   "tv": 0.16417185328418635,
+   "top": [
+    [
+     "e",
+     35
+    ],
+    [
+     "l",
+     18
+    ],
+    [
+     "O",
+     18
+    ]
+   ]
+  }
+ }
+}

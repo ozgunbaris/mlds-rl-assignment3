@@ -1,0 +1,53 @@
+BEGIN 2026-11-15T13:44:12Z node=mlds-deepdish5 cores=6 memory.max=17179869184 shm=shm              2097152     0   2097152   0% /dev/shm
+pip 13:44:12
+versions torch 2.14.1+cu130 ray 2.60.0 numpy 2.5.4 cuda True devices 2 ['NVIDIA GeForce RTX 5060 Ti', 'NVIDIA GeForce RTX 5060 Ti']
+WAITING_FOR_DATA 13:45:16
+DATA total 111752 drwxr-xr-x 2 root root       4096 Nov 15 13:45 . drwxr-xr-x 5 root root       4096 Nov 15 13:45 .. -rw-rw-rw- 1  501 staff  11688356 Sep  6  2024 test_data.npy -rw-rw-rw- 1  501 staff 102733926 Sep  6  2024 train_data.npy 
+pytest rc=1 1 failed, 15 passed in 27.04s
+started gpu_checks pid 1247 13:45:44
+13:46:44 [environment] 3 s
+PACKED 4627 bytes 13:46:44
+13:47:44 device_path gpu_m4_one_device {"gpu_per_actor": 0.25, "ray_gpus": 1, "ray_cpus": 4, "seconds": 54.52427554130554, "clients_per_round": 4, "rounds": 30, "updates": 120, "distinct_pids": 120, "min_retur
+PACKED 5095 bytes 13:47:44
+13:48:44 device_path gpu_m2 {"gpu_per_actor": 1.0, "ray_gpus": 2, "ray_cpus": 4, "seconds": 45.0892436504364, "clients_per_round": 2, "rounds": 30, "updates": 60, "distinct_pids": 60, "min_returned": 2, "devic
+PACKED 5246 bytes 13:48:44
+13:49:44 device_path gpu_m3_ceil {"gpu_per_actor": 0.5, "ray_gpus": 2, "ray_cpus": 4, "seconds": 49.152220010757446, "clients_per_round": 3, "rounds": 30, "updates": 90, "distinct_pids": 90, "min_returned": 3,
+PACKED 5387 bytes 13:49:44
+13:50:44 device_path gpu_m3_ceil {"gpu_per_actor": 0.5, "ray_gpus": 2, "ray_cpus": 4, "seconds": 49.152220010757446, "clients_per_round": 3, "rounds": 30, "updates": 90, "distinct_pids": 90, "min_returned": 3,
+PACKED 5387 bytes 13:50:44
+13:51:44 [arithmetic] 1 s
+PACKED 6659 bytes 13:51:44
+13:52:44 [arithmetic] 1 s
+PACKED 601953 bytes 13:52:44
+13:53:44 [arithmetic] 1 s
+PACKED 601953 bytes 13:53:44
+13:54:44 [arithmetic] 1 s
+PACKED 601953 bytes 13:54:44
+13:55:44 full_run round 25 max abs diff 1.279e-01
+PACKED 602103 bytes 13:55:44
+13:56:44 full_run round 50 max abs diff 1.795e-01
+PACKED 602115 bytes 13:56:44
+13:57:44 full_run round 75 max abs diff 2.143e-01
+PACKED 602122 bytes 13:57:44
+13:58:44 full_run round 125 max abs diff 2.113e-01
+PACKED 602139 bytes 13:58:44
+13:59:44 full_run round 150 max abs diff 2.258e-01
+PACKED 602146 bytes 13:59:45
+14:00:45 full_run round 175 max abs diff 2.598e-01
+PACKED 602155 bytes 14:00:45
+14:01:45 full_run round 225 max abs diff 4.232e-01
+PACKED 602170 bytes 14:01:45
+14:02:45 full_run round 250 max abs diff 4.174e-01
+PACKED 602177 bytes 14:02:45
+14:03:45 full_run round 275 max abs diff 4.091e-01
+PACKED 602185 bytes 14:03:45
+14:04:45 timing 5 {"sequential": 0.07911197344462077, "sequential_train": 0.019775441714695523, "cpu_actors": {"gpu_per_actor": 0.0, "ray_gpus": 2, "ray_cpus": 4, "seconds": 9.25488805770874, "clients_per_roun
+PACKED 1301936 bytes 14:04:45
+14:05:45 [33m(raylet)[0m A worker died or was killed while executing a task by an unexpected system error. To troubleshoot the problem, check the logs for the dead worker. Lease ID: 130000006057372b55a3fb25c
+PACKED 1304637 bytes 14:05:45
+14:06:45 GPU_CHECKS_DONE
+PACKED 1305270 bytes 14:06:45
+GPU_CHECKS rc=0 2026-11-15T14:06:45Z
+PACKED 1305270 bytes 14:06:45
+END 2026-11-15T14:06:45Z
+HOLD up to 120 min until /alloc/data/FETCHED exists

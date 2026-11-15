@@ -1,0 +1,16 @@
+{
+ "equal_weights": true,
+ "max_abs_diff": 0.0,
+ "equal_history": true,
+ "updates": 1200,
+ "distinct_pids": 1200,
+ "ray_seconds": 474.07913303375244,
+ "rounds_with_4_training_at_once": 43,
+ "max_training_at_once": 4,
+ "rounds_with_4_alive_at_once": 48,
+ "mean_actor_lifetime": 0.04586358467737834,
+ "max_actors_alive_at_once": 4,
+ "mean_train_seconds_per_update": 0.04102397918701172,
+ "mean_round_seconds": 1.5558089764912924,
+ "sequential_seconds_per_round": 0.08324630260467529
+}

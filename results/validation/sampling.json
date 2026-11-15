@@ -1,0 +1,47 @@
+{
+ "seed0": {
+  "min": 19,
+  "max": 46,
+  "chi2": 94.74074074074072,
+  "p": 0.6024034313868458,
+  "covered_by": 85,
+  "unseen_after_10": 26,
+  "per_round_ok": true
+ },
+ "seed1": {
+  "min": 17,
+  "max": 44,
+  "chi2": 108.0,
+  "p": 0.2519903142686336,
+  "covered_by": 48,
+  "unseen_after_10": 31,
+  "per_round_ok": true
+ },
+ "seed2": {
+  "min": 18,
+  "max": 51,
+  "chi2": 113.03703703703704,
+  "p": 0.1584524178708435,
+  "covered_by": 71,
+  "unseen_after_10": 30,
+  "per_round_ok": true
+ },
+ "seed3": {
+  "min": 17,
+  "max": 51,
+  "chi2": 111.85185185185185,
+  "p": 0.17787992623865606,
+  "covered_by": 38,
+  "unseen_after_10": 33,
+  "per_round_ok": true
+ },
+ "seed4": {
+  "min": 16,
+  "max": 47,
+  "chi2": 126.07407407407405,
+  "p": 0.034482552397351034,
+  "covered_by": 46,
+  "unseen_after_10": 36,
+  "per_round_ok": true
+ }
+}

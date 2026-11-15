@@ -1,0 +1,48 @@
+{
+ "config": {
+  "rounds": 300,
+  "clients_per_round": 2,
+  "epochs": 2,
+  "batch_size": 20,
+  "lr": 0.5,
+  "seed": 0,
+  "weighting": "samples",
+  "lr_decay": 1.0
+ },
+ "data": {
+  "split_seed": 0,
+  "noise_b": 0.0,
+  "noise_seed": 0,
+  "noise_val": true,
+  "clip": false,
+  "prep": "invert",
+  "partition": "writer",
+  "shuffle_labels": false
+ },
+ "n_clients": 100,
+ "final": {
+  "round": 300.0,
+  "train_loss": 0.5880199357237734,
+  "train_acc": 0.8239937168662871,
+  "val_loss": 0.9325879346088823,
+  "val_acc": 0.7702830188679245,
+  "sel_train_acc": 0.9232613908872902,
+  "sel_val_acc": 0.8076923076923077,
+  "local_loss_first": 0.5963695435215243,
+  "local_loss_last": 0.10715998512663716,
+  "drift": 1.4301548941815785,
+  "local_norm": 1.9847078517758303,
+  "update_norm": 1.3623510599136353,
+  "n_returned": 2.0,
+  "n_selected": 2.0,
+  "samples_processed": 307800.0,
+  "seconds": 0.027505159378051758,
+  "clean_train_acc": NaN,
+  "clean_train_loss": NaN
+ },
+ "test_loss": 0.9527266566857383,
+ "test_acc": 0.7757525545429439,
+ "test_n": 3621,
+ "wall_seconds": 23.923398971557617,
+ "ray": false
+}

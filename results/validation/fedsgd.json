@@ -1,0 +1,16 @@
+{
+ "float64": {
+  "max_abs_diff": 1.942890293094024e-16,
+  "uniform_max_abs_diff": 0.005484883866837709,
+  "largest_weight_change": 0.25653893608121237,
+  "loss_fedavg": 3.589503101935323,
+  "loss_centralized": 3.5895031019353225
+ },
+ "float32": {
+  "max_abs_diff": 6.457790732383728e-06,
+  "uniform_max_abs_diff": 0.005484849214553833,
+  "largest_weight_change": 0.256538987159729,
+  "loss_fedavg": 3.5895032267520874,
+  "loss_centralized": 3.589503049850464
+ }
+}

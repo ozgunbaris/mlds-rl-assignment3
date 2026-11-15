@@ -1,0 +1,24 @@
+skip  results/tune/lr0.01_B10
+skip  results/tune/lr0.01_B20
+skip  results/tune/lr0.01_B50
+skip  results/tune/lr0.02_B10
+skip  results/tune/lr0.02_B20
+skip  results/tune/lr0.02_B50
+skip  results/tune/lr0.05_B10
+skip  results/tune/lr0.05_B20
+skip  results/tune/lr0.05_B50
+skip  results/tune/lr0.1_B10
+skip  results/tune/lr0.1_B20
+skip  results/tune/lr0.1_B50
+skip  results/tune/lr0.2_B10
+skip  results/tune/lr0.2_B20
+skip  results/tune/lr0.2_B50
+skip  results/tune/lr0.5_B10
+skip  results/tune/lr0.5_B20
+skip  results/tune/lr0.5_B50
+done  results/tune/lr1.0_B50  train 0.8866  val 0.8038  test 0.8070  63 s
+done  results/tune/lr1.0_B20  train 0.8913  val 0.8017  test 0.7992  177 s
+done  results/tune/lr2.0_B20  train 0.1215  val 0.1140  test 0.1284  186 s
+done  results/tune/lr2.0_B50  train 0.7016  val 0.6646  test 0.6799  89 s
+done  results/tune/lr2.0_B10  train 0.0598  val 0.0596  test 0.0624  278 s
+done  results/tune/lr1.0_B10  train 0.8516  val 0.7745  test 0.7741  284 s

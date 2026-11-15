@@ -1,0 +1,28 @@
+...............F                                                         [100%]
+=================================== FAILURES ===================================
+_______ test_ray_actors_reproduce_the_sequential_run_and_survive_a_crash _______
+
+raw = ([(array([[1., 1., 1., ..., 1., 1., 1.],
+       [1., 1., 1., ..., 1., 1., 1.],
+       [1., 1., 1., ..., 1., 1., 1.],
+ ...1., 1., 1., ..., 1., 1., 1.]], shape=(3621, 784), dtype=float32), array([18, 12, 47, ..., 55, 44,  9], shape=(3621,))))
+
+    @needs_data
+    def test_ray_actors_reproduce_the_sequential_run_and_survive_a_crash(raw):
+        from fedavg.ray_clients import RayRunner
+        fed = data.build_federation(raw=raw)
+        cfg = Config(rounds=3, clients_per_round=4, epochs=1, batch_size=20, lr=0.1, seed=0)
+        w_seq, h_seq = run_fedavg(fed, cfg)
+        runner = RayRunner(fed, cfg)
+        try:
+            w_ray, h_ray = run_fedavg(fed, cfg, runner=runner)
+>           assert torch.equal(w_seq, w_ray)                                # bit-identical weights
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           assert False
+E            +  where False = <built-in method equal of type object at 0x7f9514bf2640>(tensor([ 0.0336,  0.0148, -0.0029,  ..., -0.0340, -0.1085,  0.0188]), tensor([ 0.0336,  0.0148, -0.0029,  ..., -0.0340, -0.1085,  0.0188]))
+E            +    where <built-in method equal of type object at 0x7f9514bf2640> = torch.equal
+
+tests/test_fedavg.py:272: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_fedavg.py::test_ray_actors_reproduce_the_sequential_run_and_survive_a_crash
+1 failed, 15 passed in 27.04s

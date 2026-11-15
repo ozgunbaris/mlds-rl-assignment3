@@ -1,0 +1,25 @@
+round    0  train loss 4.1224 acc 0.0324  val loss 4.1236 acc 0.0347  returned 0/0
+round   50  train loss 0.8855 acc 0.7594  val loss 1.0679 acc 0.7300  returned 4/4
+round  100  train loss 0.7038 acc 0.8061  val loss 0.9673 acc 0.7602  returned 4/4
+round  150  train loss 0.5674 acc 0.8329  val loss 0.8823 acc 0.7833  returned 4/4
+round  200  train loss 0.5099 acc 0.8494  val loss 0.8805 acc 0.7932  returned 4/4
+round  250  train loss 0.4687 acc 0.8629  val loss 0.8781 acc 0.7989  returned 4/4
+round  300  train loss 0.4286 acc 0.8706  val loss 0.9062 acc 0.8016  returned 4/4
+final: train acc 0.8706  val acc 0.8016  test acc 0.7940  (474.1 s)  -> results/ray/seed0
+round    0  train loss 4.1270 acc 0.0136  val loss 4.1275 acc 0.0134  returned 0/0
+round   50  train loss 0.9053 acc 0.7573  val loss 1.0778 acc 0.7321  returned 4/4
+round  100  train loss 0.6958 acc 0.8066  val loss 0.9370 acc 0.7712  returned 4/4
+round  150  train loss 0.6004 acc 0.8274  val loss 0.9262 acc 0.7778  returned 4/4
+round  200  train loss 0.5251 acc 0.8440  val loss 0.9029 acc 0.7865  returned 4/4
+round  250  train loss 0.4934 acc 0.8580  val loss 0.9331 acc 0.7928  returned 4/4
+round  300  train loss 0.4383 acc 0.8651  val loss 0.9147 acc 0.7858  returned 4/4
+final: train acc 0.8651  val acc 0.7858  test acc 0.7932  (485.5 s)  -> results/ray/seed1
+round    0  train loss 4.1226 acc 0.0295  val loss 4.1233 acc 0.0296  returned 0/0
+round   50  train loss 0.9632 acc 0.7543  val loss 1.1314 acc 0.7280  returned 4/4
+round  100  train loss 0.7100 acc 0.8047  val loss 0.9690 acc 0.7621  returned 4/4
+round  150  train loss 0.5952 acc 0.8301  val loss 0.9133 acc 0.7827  returned 4/4
+round  200  train loss 0.5334 acc 0.8447  val loss 0.9142 acc 0.7862  returned 4/4
+round  250  train loss 0.4906 acc 0.8590  val loss 0.9090 acc 0.7976  returned 4/4
+round  300  train loss 0.4350 acc 0.8728  val loss 0.9124 acc 0.7959  returned 4/4
+final: train acc 0.8728  val acc 0.7959  test acc 0.7998  (605.7 s)  -> results/ray/seed2
+ALL_RAY_DONE

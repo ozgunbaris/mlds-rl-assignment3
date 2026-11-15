@@ -1,0 +1,118 @@
+{
+ "seed0": {
+  "acc": 0.8077879038939519,
+  "case_insensitive_acc": 0.8315382491024579,
+  "errors": 696,
+  "case_errors": 86,
+  "digit_letter_errors": 98,
+  "n_dup": 18,
+  "acc_without_dup": 0.8076602830974188,
+  "acc_on_dup": 0.8333333333333334
+ },
+ "top_pairs": [
+  [
+   "I",
+   "l",
+   46
+  ],
+  [
+   "1",
+   "l",
+   17
+  ],
+  [
+   "0",
+   "O",
+   15
+  ],
+  [
+   "C",
+   "e",
+   14
+  ],
+  [
+   "M",
+   "m",
+   12
+  ],
+  [
+   "F",
+   "f",
+   11
+  ],
+  [
+   "9",
+   "q",
+   11
+  ],
+  [
+   "5",
+   "S",
+   11
+  ],
+  [
+   "1",
+   "I",
+   10
+  ],
+  [
+   "0",
+   "o",
+   10
+  ],
+  [
+   "D",
+   "O",
+   9
+  ],
+  [
+   "P",
+   "p",
+   8
+  ]
+ ],
+ "spearman_class_count_vs_acc": [
+  0.7905395216765714,
+  2.1458608006242476e-14
+ ],
+ "seed1": {
+  "acc": 0.8011599005799502,
+  "case_insensitive_acc": 0.824081745374206,
+  "errors": 720,
+  "case_errors": 83,
+  "digit_letter_errors": 112,
+  "n_dup": 18,
+  "acc_without_dup": 0.8012767138495698,
+  "acc_on_dup": 0.7777777777777778
+ },
+ "seed2": {
+  "acc": 0.8091687379177023,
+  "case_insensitive_acc": 0.8340237503452085,
+  "errors": 691,
+  "case_errors": 90,
+  "digit_letter_errors": 93,
+  "n_dup": 18,
+  "acc_without_dup": 0.8090480155426034,
+  "acc_on_dup": 0.8333333333333334
+ },
+ "seed3": {
+  "acc": 0.8028169014084507,
+  "case_insensitive_acc": 0.8293289146644574,
+  "errors": 714,
+  "case_errors": 96,
+  "digit_letter_errors": 93,
+  "n_dup": 18,
+  "acc_without_dup": 0.8023868998057174,
+  "acc_on_dup": 0.8888888888888888
+ },
+ "seed4": {
+  "acc": 0.8053024026512013,
+  "case_insensitive_acc": 0.831814415907208,
+  "errors": 705,
+  "case_errors": 96,
+  "digit_letter_errors": 101,
+  "n_dup": 18,
+  "acc_without_dup": 0.8048848182070497,
+  "acc_on_dup": 0.8888888888888888
+ }
+}
