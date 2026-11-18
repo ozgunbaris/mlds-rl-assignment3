@@ -598,6 +598,14 @@
   "val": 0.028459119496855347,
   "test": 0.03231151615575808
  },
+ "cleanval_weights_identical": [
+  true,
+  true,
+  true,
+  true,
+  true,
+  true
+ ],
  "lr_b0.2_lr0.1_E1": {
   "train": 0.749263695268015,
   "val": 0.5345911949685535,

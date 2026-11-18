@@ -24,7 +24,7 @@ pip install -r requirements.txt
 The data is distributed on Canvas (Files) and is not part of this repository. Put `train_data.npy` and `test_data.npy` in a folder `data/` at the repository root, or set `FEMNIST_DIR` to their folder. Every command below is run from the repository root.
 
 ```bash
-python -m pytest tests -q        # 18 mechanical checks, about 15 s (the checks on real data need the files;
+python -m pytest tests -q        # 19 mechanical checks, about 15 s (the checks on real data need the files;
                                  # one check needs a CUDA device and is skipped without it)
 ```
 
@@ -32,7 +32,7 @@ python -m pytest tests -q        # 18 mechanical checks, about 15 s (the checks 
 
 | Part | Setting | Result |
 |---|---|---|
-| 1.1 | C = 10%, E = 5, B = 20, learning rate 0.5, 300 rounds, 5 seeds | validation accuracy 0.805, test accuracy 0.805 (0.801 to 0.809) |
+| 1.1 | C = 10%, E = 5, B = 20, learning rate 0.5, 300 rounds, 5 seeds | validation accuracy 0.804, test accuracy 0.805 (0.801 to 0.809) |
 | 1.1 | client fraction C = 1%, 2%, 5%, 10% at E = 5 | validation accuracy 0.699, 0.774, 0.800, 0.804 |
 | 1.1 | local epochs E = 1, 2, 5, 10, 20 at C = 10% | validation accuracy 0.800, 0.805, 0.804, 0.800, 0.798; rounds to 75%: 100, 73, 54, 49, 50 |
 | 1.2 | Ray actors, 4 clients per round, 3 seeds | validation accuracy 0.794, test accuracy 0.796; weights identical to the sequential loop |
@@ -45,12 +45,12 @@ Learning rate 0.5 is unstable for b of 0.75 and above, because the squared input
 ## Running the experiments
 
 ```bash
-scripts/run_all.sh               # every experiment, validation test and figure of the report
+scripts/run_all.sh               # every experiment, validation test and figure that needs no GPU
 ```
 
 The script runs the steps below. A run whose `summary.json` exists is skipped.
 
-The trained weights (`final_weights.pt`, 81 MB in 194 runs) are not in the repository. The option `--restore-weights` of `fedavg.sweep` retrains every run whose summary exists but whose weight file is missing, and writes only the weight file. `scripts/run_all.sh` uses it for the runs whose weights the validation and plotting scripts read (`main`, `noise`, `noise_lr`), and it repeats the Ray runs when their weight files are missing. On the machine of the report the restored weights are identical to the original ones; another machine can differ by float32 rounding (test R8).
+The trained weights (`final_weights.pt`, 81 MB in 194 runs) are not in the repository. The option `--restore-weights` of `fedavg.sweep` retrains every run whose summary exists but whose weight file is missing, and writes only the weight file. `scripts/run_all.sh` uses it for the runs whose weights the validation and plotting scripts read (`main`, `noise`, `noise_variants`, `noise_lr`), and it repeats the Ray runs when their weight files are missing. On the machine of the report the restored weights are identical to the original ones; another machine can differ by float32 rounding (test R8).
 
 ```bash
 python -m fedavg.sweep --name tune            # learning rate x batch size, 24 runs
@@ -85,10 +85,11 @@ scripts/nomad/fetch_results.sh <alloc-id>    # copies the results to results/gpu
 
 `results/gpu/gpu_checks.json` holds every number of the GPU tests, and `results/gpu/cluster_logs` holds the job logs.
 
-One model with any setting:
+One model with any setting. The defaults of `fedavg.run` are the chosen hyperparameters (E = 5, B = 20, learning rate 0.5, 300 rounds, seed 0), and the noise seed equals `--seed` as in the sweeps:
 
 ```bash
-python -m fedavg.run --out results/try --C 0.1 --E 5 --B 20 --lr 0.5 --rounds 300 --seed 0
+python -m fedavg.run --out results/try --C 0.1                             # Part 1.1, chosen hyperparameters
+python -m fedavg.run --out results/try_ray --clients-per-round 4 --ray     # Part 1.2
 python -m fedavg.run --out results/try_noise --C 0.1 --noise-b 0.5        # Part 2, b = 0.5
 python -m fedavg.run --help
 ```
@@ -108,7 +109,7 @@ Each run folder holds four files.
 - **Client update.** E epochs of minibatch SGD with batch size B, started from the global weights, with no state kept between rounds.
 - **Server step.** The new global weights are the average of the returned client weights with weights n_k / n.
 - **Reported curves.** After every round the new global model is evaluated on the training and validation splits of all 100 clients.
-- **Test data.** `test_data.npy` is read once, after the last round of a run. Hyperparameters were chosen on validation accuracy.
+- **Test data.** The test images are loaded with the training files and evaluated once, after the last round of a run. No training or selection step reads them. Hyperparameters were chosen on validation accuracy.
 - **Noise.** Laplace noise of scale b is added once to every pixel of every local image, on the [0, 1] scale, before training. The test images stay clean. The training and validation splits are both perturbed.
 - **Ray.** One actor per selected client per round, 1 CPU each, killed after its update is collected. With G CUDA devices and m clients per round an actor also reserves 1 GPU when G >= m and 1/ceil(m/G) of one GPU otherwise.
 
@@ -125,11 +126,12 @@ Each run folder holds four files.
 | F5 | `references` | majority class, clients trained alone, centralized SGD | FedAvg must lie between the lower and the upper reference |
 | F6 | `sampling` | selection counts of the 5 main runs | chi-square test against uniform sampling without replacement |
 | F7-F9 | `structure` | input scaling, 1/m weights, learning-rate decay | sensitivity of the result to choices the handout leaves open |
-| F10 | `errors` | confusion structure of the test errors, duplicated images | errors must concentrate on glyphs that share a shape |
+| F10 | `errors` | confusion structure of the test errors; images duplicated between test, validation and training data | errors must concentrate on glyphs that share a shape; duplicates must not change accuracy |
 | F11 | `drift` | weights of the first 8 rounds in a principal-component plane | non-standard plot; client spread must grow with E |
 | R1, R2 | `ray_equal` | Ray run against the sequential loop | identical weights; 4 overlapping updates in different processes |
 | R3 | `ray_faults` | crashed, slow and diverged actors, and a round where all fail | the result must equal a run that omits those clients |
 | R4 | `ray_scaling` | 1, 2 and 4 CPUs, E = 5 and E = 100 | concurrency must equal the CPU count; weights never change |
+| R11 | `ray_memory` | resident memory of 4 to 32 actor processes; process ids probed after every round | no process of an earlier round may exist; memory must grow with the number of actors |
 | R5 | `gpu_checks`: `share` | GPU share per actor for 7 pairs of clients and GPUs | all actors of a round must be alive at once with the share 1/ceil(m/G) |
 | R6 | `gpu_checks`: `device_path` | shares of 0.5, 0.25 and 1 GPU on 2 real GPUs | every update must run on CUDA, spread evenly over the devices |
 | R7 | `gpu_checks`: `arithmetic` | one client update on the CPU and on each GPU | the difference must have the size of float32 rounding |
@@ -138,6 +140,6 @@ Each run folder holds four files.
 | R10 | `gpu_checks`: `faults` | exiting and diverging GPU actors | the round continues and later rounds use the GPUs again |
 | N1 | `noise_stats` | moments and KS test of the added noise | Laplace(0, b), independent of pixel and neighbour |
 | N2 | `dp_bound` | privacy loss of 20,000 image pairs | never above \|\|x - x'\|\|_1 / b |
-| N3, N5, N6 | `noise_checks` | b = 0 run, sweep table with stability counts, clipped and clean-validation variants | b = 0 must reproduce Part 1 bit for bit; a clean validation split must not change any weight |
+| N3, N5, N6 | `noise_checks` | b = 0 run, sweep table with stability counts, clipped and clean-validation variants | b = 0 must reproduce Part 1 bit for bit; a clean validation split must leave the weights identical (6 of 6 scales) |
 | N7 | `noise_checks` | learning rate re-tuned for b = 0.2 to 5 | the stable learning rate must fall as 1 / b^2 |
 | N4 | `reident` | nearest-neighbour matching of perturbed images | measures what each b hides from an observer |

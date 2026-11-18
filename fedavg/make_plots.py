@@ -431,7 +431,7 @@ def fig_gallery():
             ax = axes[i, j]
             ax.imshow(xn.reshape(28, 28), cmap="gray", vmin=-1.0, vmax=2.0)
             ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
-            ax.set_title(f"true {data.CLASS_NAMES[y]}, predicted {data.CLASS_NAMES[pred]} ({conf:.0%})", fontsize=6.5,
+            ax.set_title(f"{data.CLASS_NAMES[y]} read as {data.CLASS_NAMES[pred]} ({conf:.0%})", fontsize=10,
                          color="black" if pred == y else "#c44e52")
         w1 = core.unpack(w)[0]
         unit = int(w1.norm(dim=1).argmax())
@@ -440,11 +440,11 @@ def fig_gallery():
         ax.imshow(w1[unit].reshape(28, 28), cmap="RdBu_r", vmin=-v, vmax=v)
         ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
         extra = f"\nidentified {rid[str(b)]['ident']:.0%}" if str(b) in rid else ""
-        ax.set_xlabel(f"b = {b}, rate {lr}{extra}", fontsize=8)
-        ax.set_title("first-layer unit, largest norm", fontsize=6.5)
-    fig.suptitle("Rows 1-4: four images with fresh Laplace noise of scale b (grey range -1 to 2) and the prediction of the model trained at that b\n"
-                 "(red: wrong; in brackets: predicted probability). Row 5: first-layer weight vector with the largest norm.\n"
-                 "'identified': share of perturbed images an observer matches to their original among 2,000 candidates.", fontsize=8)
+        ax.set_xlabel(f"b = {b}, rate {lr}{extra}", fontsize=10)
+        ax.set_title("largest weight vector", fontsize=10)
+    fig.suptitle("Rows 1-4: four images with Laplace noise of scale b (grey range -1 to 2); title: true class, the class read by the\n"
+                 "model trained at that b, and its probability (red: wrong). Row 5: first-layer weight vector with the largest norm.\n"
+                 "'identified': share of perturbed images an observer matches to their original among 2,000 candidates.", fontsize=10.5)
     fig.tight_layout()
     save(fig, "noise_gallery.png")
 

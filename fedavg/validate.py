@@ -389,6 +389,31 @@ def errors():
           "test errors must be such pairs, and accuracy with upper and lower case merged must be much higher.\n\n"
           + table(["model", "test accuracy", "errors of 3,621", "same letter, other case", "within {0, O, o} or {1, I, l}",
                    "accuracy with cases merged", "accuracy without the 18 duplicated images", "accuracy on the 18"], rows))
+    # validation images that also occur, with the same label, in a training split
+    key = lambda x, y: [hashlib.md5(a.tobytes()).hexdigest() + f"_{int(c)}" for a, c in zip(x.numpy(), y.numpy())]
+    tr_k, va_k = key(f.x_tr, f.y_tr), key(f.x_va, f.y_va)
+    all_tr = set(tr_k)
+    own, other = np.zeros(len(va_k), dtype=bool), np.zeros(len(va_k), dtype=bool)
+    for k in range(f.n_clients):
+        mine = set(tr_k[f.off_tr[k]:f.off_tr[k + 1]])
+        for i in range(f.off_va[k], f.off_va[k + 1]):
+            own[i] = va_k[i] in mine
+            other[i] = (va_k[i] in all_tr) and not own[i]
+    dup_va = own | other
+    vrows = []
+    for path in sorted(glob.glob(os.path.join(RES, "main", "seed*"))):
+        w = torch.load(os.path.join(path, "final_weights.pt"))
+        ok = (forward(w, f.x_va).argmax(1) == f.y_va).numpy()
+        d = dict(val_acc=float(ok.mean()), val_acc_without_dup=float(ok[~dup_va].mean()), val_acc_on_dup=float(ok[dup_va].mean()))
+        num[os.path.basename(path)].update(d)
+        vrows.append([os.path.basename(path), f"{d['val_acc']:.4f}", f"{d['val_acc_without_dup']:.4f}", f"{d['val_acc_on_dup']:.3f}"])
+    num["val_dup_same_client"], num["val_dup_other_client"], num["val_n"] = int(own.sum()), int(other.sum()), int(len(va_k))
+    md += (f"\nThe random 80/20 split does not remove duplicates. {int(own.sum())} of the {len(va_k)} validation images have a "
+           f"pixel-identical copy with the same label in the training split of the same client, and {int(other.sum())} more "
+           "have one at another client only. A model that had memorised its training images would classify these "
+           "images almost perfectly. Removing them can change validation accuracy by at most "
+           f"{dup_va.sum() / len(va_k):.4f}.\n\n"
+           + table(["model", "validation accuracy", "without the duplicated images", "on the duplicated images"], vrows))
     if "top_pairs" in num:
         md += ("\nMost confused pairs for seed 0 (both directions added): "
                + ", ".join(f"{a}/{b} {c}" for a, b, c in num["top_pairs"]) + ". "
@@ -558,6 +583,97 @@ def ray_scaling():
     save("ray_scaling", "R4. CPU allocation and wall-clock time", md, num)
 
 
+def _pid_exists(pid):
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def ray_memory():
+    """R11. Memory of one actor process, and whether the actor processes are gone after their round."""
+    import subprocess
+    import ray
+    from .ray_clients import ClientActor, RayRunner
+    f = fed()
+    cfg = Config(rounds=20, clients_per_round=4, epochs=BEST["E"], batch_size=BEST["B"], lr=BEST["lr"], seed=0)
+    runner = RayRunner(f, cfg, use_gpu=False)
+    now, prev, gone = [], [], []
+
+    def hook(rnd, w_old, results, w_new):  # called after the round's actors were killed (ray.kill does not wait)
+        mine = [u["pid"] for u in runner.log if u["round"] == rnd]
+        now.append(sum(_pid_exists(p) for p in mine))
+        prev.append(sum(_pid_exists(u["pid"]) for u in runner.log if u["round"] < rnd))
+        t0 = time.time()
+        while any(_pid_exists(p) for p in mine) and time.time() - t0 < 5.0:
+            time.sleep(0.002)
+        gone.append(time.time() - t0)
+
+    try:
+        run_fedavg(f, cfg, runner=runner, on_round=hook)
+        time.sleep(2.0)
+        log = list(runner.log)
+        end = sum(_pid_exists(u["pid"]) for u in log)
+    finally:
+        runner.close()
+    peak = np.array([u["rss_mb"] for u in log])
+    num = dict(updates=len(log), distinct_pids=len({u["pid"] for u in log}), peak_rss_mb_mean=float(peak.mean()),
+               peak_rss_mb_min=float(peak.min()), peak_rss_mb_max=float(peak.max()),
+               alive_right_after_kill=[int(v) for v in now], earlier_round_processes_alive=[int(v) for v in prev],
+               seconds_until_round_processes_gone=[float(v) for v in gone], alive_2s_after_run=int(end))
+    # k actors alive at the same time, each after one training call
+    rows, grow = [], {}
+    w0 = init_vector(0).numpy()
+    for k in [4, 8, 16, 32]:
+        ray.init(num_cpus=k, include_dashboard=False, log_to_driver=False, logging_level="ERROR")
+        try:
+            t0 = time.time()
+            actors = []
+            for c in range(k):
+                x, y = f.client_train(c)
+                actors.append(ClientActor.options(num_cpus=1).remote(c, x.numpy(), y.numpy(), False))
+            res = ray.get([a.train.remote(w0, 1, BEST["B"], BEST["lr"], update_seed(0, 1, c)) for c, a in enumerate(actors)])
+            secs = time.time() - t0
+            pids = [r[2]["pid"] for r in res]
+            out = subprocess.run(["ps", "-o", "rss=", "-p", ",".join(str(p) for p in pids)], capture_output=True, text=True).stdout
+            rss = np.array([float(v) for v in out.split()]) / 1024.0  # ps reports kilobytes
+            for a in actors:
+                ray.kill(a)
+        finally:
+            ray.shutdown()
+        grow[str(k)] = dict(actors_measured=int(len(rss)), total_rss_mb=float(rss.sum()), mean_rss_mb=float(rss.mean()), seconds=secs)
+        rows.append([k, len(rss), f"{rss.sum():.0f}", f"{rss.mean():.0f}", f"{secs:.1f}"])
+    per_lo, per_hi = min(g["mean_rss_mb"] for g in grow.values()), max(g["mean_rss_mb"] for g in grow.values())
+    ram = None
+    try:
+        ram = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 2 ** 30
+    except (ValueError, OSError):
+        pass
+    num.update(alive_at_once=grow, estimate_100_actors_gb=[100 * per_lo / 1024, 100 * per_hi / 1024],
+               measured_4_actors_gb=grow["4"]["total_rss_mb"] / 1024, machine_ram_gb=ram)
+    md = ("The handout states that an actor has a large memory overhead and asks for actors of the selected clients only. "
+          f"Part A runs {cfg.rounds} rounds with 4 actors per round and checks, with `os.kill(pid, 0)` on every actor's process id, "
+          "which actor processes still exist. Prediction: no process of an earlier round exists when a round ends.\n\n"
+          + table(["quantity", "value"], [
+              ["client updates / distinct actor processes", f"{num['updates']} / {num['distinct_pids']}"],
+              ["peak resident memory of one actor process, MiB (mean, min to max)", f"{peak.mean():.0f} ({peak.min():.0f} to {peak.max():.0f})"],
+              ["actor processes of earlier rounds that still exist at the end of a round (max over rounds)", max(prev)],
+              ["actor processes of the same round that still exist right after ray.kill (min to max)", f"{min(now)} to {max(now)}"],
+              ["seconds until all processes of a round are gone after ray.kill (mean, max)", f"{np.mean(gone):.3f}, {np.max(gone):.3f}"],
+              ["actor processes that exist 2 s after the last round", end]])
+          + "\nPart B keeps k actors alive at once, each after one training call, and reads their resident memory with `ps`. "
+            "Prediction: the total grows in proportion to k, so 100 persistent actors would need 25 times the memory of 4.\n\n"
+          + table(["actors alive at once", "processes measured", "total resident memory (MiB)", "mean per actor (MiB)", "seconds to create and train once"], rows)
+          + f"\nEstimate for 100 actors alive at once, from the smallest and the largest mean per actor: {100 * per_lo / 1024:.1f} to "
+            f"{100 * per_hi / 1024:.1f} GiB, against {grow['4']['total_rss_mb'] / 1024:.2f} GiB measured for 4"
+          + (f"; the machine has {ram:.0f} GiB of memory.\n" if ram else ".\n")
+          + "Resident memory counts pages of shared libraries in every process, so the sum overstates the unique memory.\n")
+    save("ray_memory", "R11. Memory of actor processes and their lifetime", md, num)
+
+
 # ------------------------------------------------------------------ Part 2 (Laplace noise)
 def noise_stats():
     """N1. The injected noise is Laplace(0, b), independent across pixels and of the image."""
@@ -700,7 +816,7 @@ def noise_checks():
                + table(["b", "input energy", "training (perturbed)", "training (clean)", "validation (perturbed)", "test (clean)",
                         "std of test over seeds", "unstable seeds", "rounds without update, per seed",
                         "distinct classes predicted on the test set, per seed"], rows))
-    rows = []
+    rows, same = [], []
     for bb in [0.1, 0.3, 0.5, 1.0, 2.0, 5.0]:
         r = [bb]
         for name in [f"b{bb}_seed0", f"clip_b{bb}", f"cleanval_b{bb}"]:
@@ -713,10 +829,17 @@ def noise_checks():
             else:
                 r += ["", "", ""]
         rows.append(r)
+        pa = os.path.join(RES, "noise", f"b{bb}_seed0", "final_weights.pt")
+        pb = os.path.join(RES, "noise_variants", f"cleanval_b{bb}", "final_weights.pt")
+        if os.path.exists(pa) and os.path.exists(pb):
+            same.append(bool(torch.equal(torch.load(pa), torch.load(pb))))
+    num["cleanval_weights_identical"] = same
     md += ("\n**N6. Edge-case variants (seed 0).** 'Clipped' clips perturbed pixels to [0, 1] before training. 'Clean "
            "validation' perturbs the training split only.\n\n"
            + table(["b", "train", "validation", "test", "clipped: train", "clipped: validation", "clipped: test",
-                    "clean validation: train", "clean validation: validation", "clean validation: test"], rows))
+                    "clean validation: train", "clean validation: validation", "clean validation: test"], rows)
+           + f"\nFinal weights of the clean-validation run identical to the standard run (torch.equal): "
+             f"{sum(same)} of {len(same)} scales.\n")
     if glob.glob(os.path.join(RES, "noise_lr", "*")):
         from .make_plots import noise_lr_selected, noise_lr_table
         d, sel = noise_lr_table(), noise_lr_selected()
@@ -741,7 +864,7 @@ def noise_checks():
 
 SECTIONS = dict(fedsgd=fedsgd, trace=trace, references=references, sampling=sampling, structure=structure,
                 errors=errors, drift=drift, ray_equal=ray_equal, ray_faults=ray_faults, ray_scaling=ray_scaling,
-                noise_stats=noise_stats, dp_bound=dp_bound, reident=reident, noise_checks=noise_checks)
+                ray_memory=ray_memory, noise_stats=noise_stats, dp_bound=dp_bound, reident=reident, noise_checks=noise_checks)
 
 
 def main():

@@ -1,4 +1,4 @@
-"""GPU checks of the Ray actors (tests G1 to G6 of the report).
+"""GPU checks of the Ray actors (tests R5 to R10 of the report).
 
     python -m fedavg.gpu_checks --out results/gpu                # on a machine with CUDA devices (scripts/nomad)
     python -m fedavg.gpu_checks --out results/gpu --only share   # scheduling test with logical GPUs, any machine
@@ -116,7 +116,7 @@ class Probe:
 
 
 def share(f, a, N):
-    """G1. The GPU share per actor: logical GPUs, probe actors that sleep (no CUDA call)."""
+    """R5. The GPU share per actor: logical GPUs, probe actors that sleep (no CUDA call)."""
     out = []
     for m, G in [(4, 1), (4, 2), (4, 3), (4, 4), (4, 5), (3, 2), (10, 4)]:
         for rule, frac in [("ceil", gpu_share(G, m)), ("G/m", min(1.0, int(1e4 * G / m) / 1e4))]:
@@ -147,7 +147,7 @@ def share(f, a, N):
 
 
 def device_path(f, a, N):
-    """G2. The actors train on the GPUs Ray assigned; shares of 0.5, 0.25 and 1 GPU; CPU actors for reference."""
+    """R6. The actors train on the GPUs Ray assigned; shares of 0.5, 0.25 and 1 GPU; CPU actors for reference."""
     G = a.gpus
     cases = [("gpu_m4", 4, dict(num_gpus=G)), ("gpu_m4_one_device", 4, dict(num_gpus=1)),
              ("gpu_m2", 2, dict(num_gpus=G)), ("gpu_m3_ceil", 3, dict(num_gpus=G)),
@@ -164,7 +164,7 @@ def device_path(f, a, N):
 
 
 def arithmetic(f, a, N):
-    """G3. One client update on the CPU and on every CUDA device, from the same weights and the same seed."""
+    """R7. One client update on the CPU and on every CUDA device, from the same weights and the same seed."""
     if not torch.cuda.is_available():
         N["arithmetic"] = dict(skipped="no CUDA device")
         return
@@ -202,7 +202,7 @@ def arithmetic(f, a, N):
 
 
 def full_run(f, a, N):
-    """G4. A full run with GPU actors against the sequential CPU loop on the same machine, round by round."""
+    """R8. A full run with GPU actors against the sequential CPU loop on the same machine, round by round."""
     out = {}
     est = N.get("device_path", {}).get("gpu_m4", {}).get("round_seconds", 0.0)
     R = a.rounds_full if est <= a.max_round_seconds else max(50, a.rounds_full // 3)
@@ -270,7 +270,7 @@ def full_run(f, a, N):
 
 
 def timing(f, a, N):
-    """G5. Seconds per round: sequential CPU loop, CPU actors, GPU actors; and the same update on a warm GPU."""
+    """R9. Seconds per round: sequential CPU loop, CPU actors, GPU actors; and the same update on a warm GPU."""
     out = {}
     for E, R in [(5, 7), (100, 5)]:
         cfg = Config(rounds=R, clients_per_round=4, epochs=E, batch_size=20, lr=0.05, seed=0)
@@ -309,7 +309,7 @@ def timing(f, a, N):
 
 
 def faults(f, a, N):
-    """G6. A GPU actor process that exits during training: the round continues and the device stays usable."""
+    """R10. A GPU actor process that exits during training: the round continues and the device stays usable."""
     from tests.test_fedavg import DroppingRunner
     cfg = Config(rounds=6, clients_per_round=4, seed=0, **BEST)
     _, h0 = run_fedavg(f, cfg)
@@ -328,7 +328,7 @@ def faults(f, a, N):
 
 
 def sensitivity(f, a, N):
-    """G4 control, CPU only. The sequential loop is repeated from initial weights that differ by one float32
+    """R8 control, CPU only. The sequential loop is repeated from initial weights that differ by one float32
     rounding step; the growth of that difference is compared with the GPU-against-CPU difference of full_run."""
     out, curves = {}, {}
     for lr in [0.5, 0.05]:

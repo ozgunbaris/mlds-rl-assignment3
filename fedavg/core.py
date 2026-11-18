@@ -196,12 +196,13 @@ def run_fedavg(fed, cfg, runner=None, on_round=None, verbose=False, init_vec=Non
     def record(rnd, sel, results, w_old, seconds):
         tr = evaluate(w, fed.x_tr, fed.y_tr, idx_tr, K)
         va = evaluate(w, fed.x_va, fed.y_va, idx_va, K)
-        client_train_acc[rnd] = tr["client_correct"] / n_tr
-        client_val_acc[rnd] = va["client_correct"] / np.maximum(n_va, 1)
+        # a client without images has no accuracy: NaN, and it does not enter the pooled means above
+        client_train_acc[rnd] = np.where(n_tr > 0, tr["client_correct"] / np.maximum(n_tr, 1), np.nan)
+        client_val_acc[rnd] = np.where(n_va > 0, va["client_correct"] / np.maximum(n_va, 1), np.nan)
         row = dict(round=rnd, train_loss=tr["loss"], train_acc=tr["acc"], val_loss=va["loss"], val_acc=va["acc"],
                    n_selected=len(sel), n_returned=len(results), samples_processed=samples, seconds=seconds)
         if len(sel):
-            row["sel_train_acc"] = tr["client_correct"][sel].sum() / n_tr[sel].sum()
+            row["sel_train_acc"] = tr["client_correct"][sel].sum() / max(n_tr[sel].sum(), 1)
             row["sel_val_acc"] = va["client_correct"][sel].sum() / max(n_va[sel].sum(), 1)
         if results:
             ns = np.array([r["stats"]["n"] for r in results], dtype=float)

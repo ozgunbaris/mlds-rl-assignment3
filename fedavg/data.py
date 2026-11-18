@@ -22,7 +22,8 @@ def default_data_dir():
 
 
 def _to_arrays(entry):
-    x = np.stack([np.asarray(a, dtype=np.float32) for a in entry["images"]]).reshape(-1, N_PIXELS)
+    images = [np.asarray(a, dtype=np.float32) for a in entry["images"]]
+    x = np.stack(images).reshape(-1, N_PIXELS) if len(images) else np.zeros((0, N_PIXELS), dtype=np.float32)
     y = np.asarray(entry["labels"], dtype=np.int64).reshape(-1)
     if len(x) != len(y):
         raise ValueError("images and labels differ in length")

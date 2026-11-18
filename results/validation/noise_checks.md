@@ -31,6 +31,8 @@
 | 2.0 | 0.0419 | 0.0401 | 0.0075 | 0.0577 | 0.0577 | 0.0610 | 0.0419 | 0.0094 | 0.0075 |
 | 5.0 | 0.0419 | 0.0407 | 0.0323 | 0.0577 | 0.0577 | 0.0610 | 0.0419 | 0.0285 | 0.0323 |
 
+Final weights of the clean-validation run identical to the standard run (torch.equal): 6 of 6 scales.
+
 **N7. Learning rate re-tuned per noise scale (seed 0, 300 rounds).** 'Chosen' marks the E = 5 run with the highest round-300 validation accuracy among the runs that did not diverge; the test column was not used for the choice. The column 'best round' gives the round with the highest validation accuracy and the clean training accuracy in that round, which is what early stopping on the perturbed validation split would return.
 
 | b | learning rate | E | learning rate x b^2 | training (perturbed) | validation (perturbed) | training (clean) | test (clean) | best round / clean training accuracy there | state | choice |

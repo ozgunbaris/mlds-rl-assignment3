@@ -7,7 +7,10 @@
   "digit_letter_errors": 98,
   "n_dup": 18,
   "acc_without_dup": 0.8076602830974188,
-  "acc_on_dup": 0.8333333333333334
+  "acc_on_dup": 0.8333333333333334,
+  "val_acc": 0.8081761006289309,
+  "val_acc_without_dup": 0.8082688969543949,
+  "val_acc_on_dup": 0.782608695652174
  },
  "top_pairs": [
   [
@@ -83,7 +86,10 @@
   "digit_letter_errors": 112,
   "n_dup": 18,
   "acc_without_dup": 0.8012767138495698,
-  "acc_on_dup": 0.7777777777777778
+  "acc_on_dup": 0.7777777777777778,
+  "val_acc": 0.8011006289308176,
+  "val_acc_without_dup": 0.800694334858766,
+  "val_acc_on_dup": 0.9130434782608695
  },
  "seed2": {
   "acc": 0.8091687379177023,
@@ -93,7 +99,10 @@
   "digit_letter_errors": 93,
   "n_dup": 18,
   "acc_without_dup": 0.8090480155426034,
-  "acc_on_dup": 0.8333333333333334
+  "acc_on_dup": 0.8333333333333334,
+  "val_acc": 0.8044025157232705,
+  "val_acc_without_dup": 0.8046394192835726,
+  "val_acc_on_dup": 0.7391304347826086
  },
  "seed3": {
   "acc": 0.8028169014084507,
@@ -103,7 +112,10 @@
   "digit_letter_errors": 93,
   "n_dup": 18,
   "acc_without_dup": 0.8023868998057174,
-  "acc_on_dup": 0.8888888888888888
+  "acc_on_dup": 0.8888888888888888,
+  "val_acc": 0.8036163522012578,
+  "val_acc_without_dup": 0.803692599021619,
+  "val_acc_on_dup": 0.782608695652174
  },
  "seed4": {
   "acc": 0.8053024026512013,
@@ -113,6 +125,12 @@
   "digit_letter_errors": 101,
   "n_dup": 18,
   "acc_without_dup": 0.8048848182070497,
-  "acc_on_dup": 0.8888888888888888
- }
+  "acc_on_dup": 0.8888888888888888,
+  "val_acc": 0.805188679245283,
+  "val_acc_without_dup": 0.8051128294145494,
+  "val_acc_on_dup": 0.8260869565217391
+ },
+ "val_dup_same_client": 22,
+ "val_dup_other_client": 1,
+ "val_n": 6360
 }

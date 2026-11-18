@@ -1,7 +1,7 @@
 ---
 title: "IEMS 469 Reinforcement Learning, Assignment 3: Federated Learning and Differential Privacy"
 author: "Özgün Barış Kır, student number 3676663, GitHub username ozgunbaris"
-date: "November 15, 2026"
+date: "November 17, 2026"
 geometry: margin=0.8in
 fontsize: 11pt
 colorlinks: true
@@ -20,20 +20,21 @@ All code is in the repository, and `README.md` lists every command. Short versio
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m pytest tests -q                         # 18 mechanical checks
-scripts/run_all.sh                                # every experiment, test and figure below
-python -m fedavg.run --out results/try --C 0.1 --E 5 --B 20 --lr 0.5 \
-    --rounds 300 --seed 0                         # Part 1.1, one model
-python -m fedavg.run --out results/ray/seed0 --clients-per-round 4 --ray   # Part 1.2
-python -m fedavg.run --out results/try_noise --C 0.1 --noise-b 0.5        # Part 2
-python -m fedavg.sweep --name ce                  # C x E comparison (README lists all sweeps)
+python -m pytest tests -q                         # 19 mechanical checks
+scripts/run_all.sh                                # every experiment, test, figure (CPU)
+python -m fedavg.run --out results/try --C 0.1    # Part 1.1, one model
+python -m fedavg.run --out results/try_ray --clients-per-round 4 --ray    # Part 1.2
+python -m fedavg.run --out results/try_noise --C 0.1 --noise-b 0.5       # Part 2
+python -m fedavg.sweep --name ce                  # C x E comparison
 python -m fedavg.validate --list                  # names of the validation experiments
-python -m fedavg.gpu_checks --out results/gpu     # GPU tests R5 to R10 (needs CUDA devices)
+python -m fedavg.gpu_checks --out results/gpu     # GPU tests R6 to R10 (CUDA)
 python -m fedavg.validate --only fedsgd trace     # run two of them
 python -m fedavg.make_plots                       # figures
 ```
 
 Every `results/<group>/<run>` folder holds `history.csv` (one row per round), `arrays.npz` (per-client accuracy per round, selection mask, actor timings), `final_weights.pt` and `summary.json`. The numbers quoted in the test sections are in `results/validation/validation.md`.
+
+`fedavg.run` uses the chosen hyperparameters by default ($E = 5$, $B = 20$, learning rate 0.5, 300 rounds, seed 0). The weight files (81 MB) are not in the repository. `scripts/run_all.sh` retrains the runs whose weights the test and plotting scripts read, and on the laptop of this report the restored weights are identical to the original ones.
 
 **Compute.** All training runs of Parts 1 and 2 used the CPU of one Apple M5 laptop (10 cores, no CUDA GPU). One 300-round run with 10 clients per round takes 1 to 3 minutes on one core. The GPU tests of question 2 (R5 to R10) ran on the lab cluster as one Nomad job on node mlds-deepdish5. The job had 6 CPU cores and 2 NVIDIA RTX 5060 Ti GPUs (16 GB each) for 28 minutes. `scripts/nomad` holds the job scripts, and the README lists their commands.
 
@@ -59,7 +60,7 @@ Client 25 has mostly digits (its three largest classes are 7, 0 and 1). Client 3
 
 **All clients.** No client holds all 62 classes; the number of classes present ranges from 37 to 61 (median 56). FIG(client_class_heatmap) shows the class shares of every client. The mean TV distance between a client's class mix and the pooled mix is 0.185. A random deal of the pooled images into clients of the same sizes gives 0.157, because 318 images spread over 62 classes already produce sampling differences. Only 21 clients lie above the 99th percentile of the random deal (0.236). Those 21 clients hold 14% lower-case letters, against 35% for the other 79. The class mix is therefore close to identically distributed for four fifths of the clients, and the remaining difference between clients is handwriting style (test F4 measures its effect).
 
-**Duplicates.** 83 training images are exact copies of another training image, 2 images occur at two different clients, and 18 test images also occur in the training data (0.5% of the test set). Test F10 reports test accuracy with and without those 18 images.
+**Duplicates.** 83 training images are exact copies of another training image, 2 images occur at two different clients, and 18 test images also occur in the training data (0.5% of the test set). Test F10 reports test accuracy with and without those 18 images. The random 80/20 split also leaves 22 validation images with an identical copy in the training split of the same client (0.35% of the validation set), and test F10 measures their effect.
 
 ![Class distribution of the pooled training data (top; black marks show the test data) and of five clients (bottom). Blue: digits, orange: upper-case letters, green: lower-case letters.](../results/figures/data_distribution.png){ width=100% }
 
@@ -78,7 +79,7 @@ Client 25 has mostly digits (its three largest classes are 7, 0 and 1). Client 3
 - **Split.** Each client's images are split at random into 80% training and 20% validation, which gives 25,465 training and 6,360 validation images. The smallest client keeps 94 and 24, the largest 314 and 79.
 - **Aggregated curves.** After every round the new global model is evaluated on the training splits and on the validation splits of all 100 clients. "Aggregated" loss and accuracy are the means over all those images, which equals the $n_k$-weighted mean of the per-client values. The alternative, averaging over the round's selected clients only, also changes with which clients were drawn; it is logged and shown in grey in FIG(main_curves).
 - **Input.** The network receives $1 - x$, so the page is 0 and ink is 1 (test F7 compares three input scalings).
-- **Test data.** The test file is read once per run, after the last round. Every hyperparameter was chosen on validation accuracy.
+- **Test data.** The test images are loaded together with the training files and are evaluated once per run, after the last round. No training or selection step reads them, and every hyperparameter was chosen on validation accuracy.
 - **Randomness.** The run seed fixes the initial weights and the client sampling. The shuffling seed of a client update is derived from (run seed, round, client), so an update does not depend on which process executes it.
 
 # Part 1, question 1: FedAvg on Federated EMNIST
@@ -91,7 +92,7 @@ Client 25 has mostly digits (its three largest classes are 7, 0 and 1). Client 3
 
 ## Results
 
-**Loss and accuracy per round.** With $C = 10\%$, $E = 5$, $B = 20$ and $\eta = 0.5$, validation accuracy reaches 74.4% after 50 rounds, 78.1% after 100 rounds and 80.5% after 300 rounds (mean of 5 seeds, FIG(main_curves)). Training accuracy keeps rising to 88.6%. The validation loss has its minimum between rounds 138 and 190 (0.829 on average) and then rises to 0.872 at round 300, while validation accuracy stays flat. The model therefore overfits in loss after about round 165; the accuracy, which is the required metric, does not degrade.
+**Loss and accuracy per round.** With $C = 10\%$, $E = 5$, $B = 20$ and $\eta = 0.5$, validation accuracy reaches 74.4% after 50 rounds, 78.1% after 100 rounds and 80.4% after 300 rounds (mean of 5 seeds, FIG(main_curves)). Training accuracy keeps rising to 88.6%. The validation loss has its minimum between rounds 138 and 190 (0.829 on average) and then rises to 0.871 at round 300, while validation accuracy stays flat. The model therefore overfits in loss after about round 165; the accuracy, which is the required metric, does not degrade.
 
 | seed | training accuracy | validation accuracy | training loss | validation loss | test accuracy |
 |---|---|---|---|---|---|
@@ -100,7 +101,7 @@ Client 25 has mostly digits (its three largest classes are 7, 0 and 1). Client 3
 | 2 | 0.8869 | 0.8044 | 0.363 | 0.862 | 0.8092 |
 | 3 | 0.8834 | 0.8036 | 0.373 | 0.864 | 0.8028 |
 | 4 | 0.8860 | 0.8052 | 0.378 | 0.887 | 0.8053 |
-| mean (std) | 0.8856 (0.0019) | 0.8045 (0.0026) | 0.374 | 0.872 | 0.8052 (0.0033) |
+| mean (std) | 0.8856 (0.0019) | 0.8045 (0.0026) | 0.374 | 0.871 | 0.8052 (0.0033) |
 
 ![Aggregated training and validation loss (left) and accuracy (right) against the communication round for the chosen hyperparameters.](../results/figures/main_curves.png){ width=100% }
 
@@ -122,13 +123,13 @@ Client 25 has mostly digits (its three largest classes are 7, 0 and 1). Client 3
 - **Classes missing inside a client.** 2,003 client-class pairs consist of a single image, so a per-class 80/20 split is impossible. The split is random, with at least one validation image per client. As a result 433 of the 6,360 validation images (6.8%) belong to a class of which their own client has no training image. A client trained alone classifies none of them correctly; the FedAvg model classifies 47.8% of them correctly, against 83.2% of the other validation images (test F5). Those images can only be learned from other clients, which is the purpose of federation.
 - **Small validation sets.** The smallest client has 24 validation images, so one image changes its accuracy by 4.2 percentage points. The reported curves pool all images, which weights each client by its size. Per-client validation accuracy of the final model (seed 0) ranges from 0.33 to 0.91, with 10th and 90th percentiles 0.70 and 0.89.
 - **A client the global model cannot fit.** Client 25 (118 images, mostly digits) has 33% validation accuracy and 37% accuracy on its own training split under the final global model. Its low training accuracy shows that the cause is its handwriting and class mix, since a merely small validation set would leave training accuracy high.
-- **Batch size and data size.** A batch size larger than the client's data gives one full-batch step per epoch, and the last incomplete batch of an epoch is used. Both cases, a client with one image and a client with no image, are covered by `test_client_update_edge_cases`.
+- **Batch size and data size.** A batch size larger than the client's data gives one full-batch step per epoch, and the last incomplete batch of an epoch is used. Both cases, a client with one image and a client with no image, are covered by `test_client_update_edge_cases`. A client without images is accepted by the whole pipeline. The loader returns an empty array, the client returns no update, and the weights equal those of a run without that client (a second unit test). The course data has no such client, since the smallest holds 118 images.
 - **Client fraction.** $C K$ is rounded and limited to 1 to $K$. $C = 1\%$ gives one client; the average of one model is that model.
 - **Clients not yet selected.** After 10 rounds 26 to 36 clients have never been selected (expected: 34.9, test F6). Their accuracy still rises with the global model: in rounds 1 to 10 the validation accuracy of non-selected clients gains 0.056 per round (FIG(client_heatmap)).
 - **Unstable local steps.** At $\eta = 0.5$ a single late minibatch step can leave a client with a poor final model. In round 1 of seed 0, client 96 returns a model with 14% accuracy on its own data although its mean loss over the last epoch is 1.83 (test F2). Its weight in the average is 0.084, and the averaged model reaches 34% validation accuracy in that round. A client whose weights are not finite is excluded by the server (`test_client_update_edge_cases`, test R3).
 - **Learning rate too large.** At $\eta = 2$ the model ends at the majority-class rate. The grid includes this value to show that 0.5 lies below the unstable range.
 - **Overfitting.** The validation loss rises after about round 165 while accuracy is flat. A decaying learning rate was tested as a remedy (test F9).
-- **Test data.** Selecting anything on test accuracy would use the test data for training decisions. The code reads the test file once per run, after training. The 18 test images that also occur in the training data change test accuracy by at most 0.0004 (test F10).
+- **Test data.** Selecting anything on test accuracy would use the test data for training decisions. The code evaluates the test images once per run, after training, and no other step reads them. The 18 test images that also occur in the training data change test accuracy by at most 0.0004 (test F10).
 - **Input range.** The stored page value is 1, which gives every first-layer unit a large constant input. The network receives $1 - x$ instead (test F7).
 
 ## Tests that validate correctness (question 1)
@@ -201,6 +202,8 @@ The mean squared input norm per image is 749 for the stored pixels and 755 for $
 
 **F10. Structure of the test errors (`errors`).** If the model is correct, its remaining errors should concentrate on characters that are hard for any reader of a size-normalised 28 by 28 image. The five models make 691 to 720 test errors. 12% to 14% of them confuse the upper and lower case of one letter, and a further 13% to 16% fall inside the groups {0, O, o} and {1, I, l}. With upper and lower case merged, accuracy is 82.4% to 83.4%. The most confused pairs of seed 0 are I/l (46 errors), 1/l (17), 0/O (15), C/e (14) and M/m (12). Class frequency explains much of the rest: the Spearman rank correlation between a class's number of training images and its test accuracy is 0.79.
 
+The same test covers duplicates inside the local data. 23 validation images have an identical copy with the same label in a training split, 22 of them at the same client. A model that had memorised its training images would classify them almost perfectly. The five models classify 74% to 91% of these 23 images correctly, against 80% to 81% of all validation images, and one image is 4.3 points here. Removing the 23 images changes validation accuracy by at most 0.0004.
+
 **F11. Client drift (`drift`).** See the non-standard plots below.
 
 ## Non-standard plots (question 1)
@@ -244,12 +247,12 @@ The mean squared input norm per image is 749 for the stored pixels and 755 for $
 
 | quantity | 4 clients per round (Ray, 3 seeds) | 10 clients per round (question 1, 5 seeds) |
 |---|---|---|
-| validation accuracy at round 50 / 100 / 300 | 0.730 / 0.765 / 0.794 | 0.744 / 0.781 / 0.805 |
+| validation accuracy at round 50 / 100 / 300 | 0.730 / 0.765 / 0.794 | 0.744 / 0.781 / 0.804 |
 | training accuracy at round 300 | 0.870 | 0.886 |
 | test accuracy (range over seeds) | 0.796 (0.793 to 0.800) | 0.805 (0.801 to 0.809) |
 | rounds to 75% validation accuracy | 58, 66, 67 | 43 to 56 |
 | standard deviation of validation accuracy within rounds 200 to 300 | 0.0074 | 0.0033 |
-| lowest validation loss of the mean curve (round) and final validation loss | 0.876 (231) and 0.911 | 0.840 (165) and 0.872 |
+| lowest validation loss of the mean curve (round) and final validation loss | 0.876 (231) and 0.911 | 0.840 (165) and 0.871 |
 
 The result lies between the values for 2 clients (0.774) and 5 clients (0.800) of question 1, as expected for 4 clients. The validation accuracy with four clients per round varies about twice as much as with ten clients. Every client was selected at least 5 times in 300 rounds (5 to 21 times, 12 expected).
 
@@ -272,11 +275,12 @@ The result lies between the values for 2 clients (0.774) and 5 clients (0.800) o
 - **Concurrent training is slower per client.** At $E = 100$ one client's training takes 0.30 s when one actor runs and 0.62 s when four run at once. Going from 1 to 4 CPUs therefore shortens the round by a factor of 2.1, and I did not isolate the cause of the slowdown.
 - **One client with a harmful update.** The largest one-round drop of validation accuracy in each of the three seeds occurs in a round that selected client 32 (rounds 262, 110 and 35; the largest is from 0.699 to 0.564). After round 50, rounds with client 32 change validation accuracy by $-0.77$ points on average (30 rounds), against $+0.06$ points for the other rounds. With 10 clients per round the same client costs 0.11 points, because its weight is about 1/10 and about 1/4 here. The accuracy returns to its previous level one round later in all three cases.
 - **GPUs that do not divide the clients.** Ray places a fractional GPU request on a single device. A share of $G/m$ is 0.75 for $G = 3$ and $m = 4$, so each GPU holds one actor and only 3 of the 4 actors run at once. The code uses the share $1/\lceil m/G \rceil$, which is 0.5 in that case. On the 2 cluster GPUs with 3 clients per round, the share 0.67 ran at most 2 actors at once and took 2.75 s per round. The share 0.5 ran 3 actors at once and took 1.57 s (test R5).
-- **GPU and CPU results differ in the last bits.** A GPU adds the same numbers in a different order than a CPU, so a GPU run cannot equal the sequential CPU loop in every bit. Test R1 therefore holds only when both runners use the same device type. The unit test for R1 failed on the cluster machine (15 of 16 passed), because Ray found the GPUs and the actors used them. That test now forces CPU actors, and a new test compares GPU actors with the CPU loop to a tolerance of $10^{-5}$ after 3 rounds. All 18 unit tests pass on the cluster machine.
+- **GPU and CPU results differ in the last bits.** A GPU adds the same numbers in a different order than a CPU, so a GPU run cannot equal the sequential CPU loop in every bit. Test R1 therefore holds only when both runners use the same device type. The unit test for R1 failed on the cluster machine (15 of 16 passed), because Ray found the GPUs and the actors used them. That test now forces CPU actors, and a new test compares GPU actors with the CPU loop to a tolerance of $10^{-5}$ after 3 rounds. All 18 unit tests that existed at the time of the job passed on the cluster machine.
 - **Rounding differences grow during training.** With learning rate 0.5 a weight difference of $10^{-7}$ after round 1 reaches 0.05 after 10 rounds and 0.46 after 300 rounds. Two CPU runs whose initial weights differ by one rounding step separate equally fast, so the growth comes from the training problem and is unrelated to the GPU (test R8). Five runs that differ only by rounding have test accuracies of 79.3% to 79.5%. A difference below about 0.3 points between two single runs is therefore within this effect.
 - **Repeated GPU runs.** Two GPU runs with the same seed gave identical weights, and the two GPUs gave identical updates. Both devices are the same model. The node's third GPU, an RTX PRO 5000, had 34 of its 48 GB in use, so two different GPU models were not compared.
 - **One CUDA process per actor.** Every actor process initialises CUDA, which adds 0.33 s to its constructor and holds about 250 MiB of device memory. Four actors on one 16 GB GPU used 1,134 MiB, against 137 MiB in use before the job. The first training call of a new process also loads the GPU libraries: the same update takes 0.335 s in a new actor and 0.024 s in a warm process (test R9).
 - **A failing GPU actor.** An actor process that exits during training releases its GPU share, and the next rounds train on the GPUs again. The device memory in use stayed between 751 and 771 MiB across rounds with and without failures (test R10).
+- **Memory of the actors.** One actor process holds 273 MiB of resident memory at its peak, because it imports PyTorch. Four actors alive at once hold 1.0 GiB, and 100 actors alive for the whole run would hold 22 to 26 GiB of this machine's 32 GiB. The code therefore creates actors for the selected clients only, as the handout asks. Every actor process had ended 0.018 s after `ray.kill` at the latest, and no process of an earlier round existed at the end of any round (test R11).
 - **Background load.** Seed 2 took 606 s against 474 s and 485 s for seeds 0 and 1; the operating system's file synchronisation used 2 to 3 CPUs when I checked during that run. The timings of tests R1 and R4 were taken on the same 10-core machine without control of this load.
 
 ## Tests that validate correctness (question 2)
@@ -395,6 +399,21 @@ At the batch size of this assignment the warm GPU and one CPU thread take the sa
 
 **R10. Failing GPU actors (`gpu_checks`, section `faults`).** One actor process exits in round 2, one actor returns non-finite weights in round 4, and all four exit in round 5. The server used 4, 3, 4, 3, 0 and 4 updates in rounds 1 to 6, and all four updates of round 6 ran on CUDA. All final weights are finite. The largest difference to a CPU reference run that omits the same clients is 0.011 after 6 rounds, which matches the growth of rounding differences in test R8 (0.003 after 5 rounds).
 
+**R11. Memory and lifetime of the actor processes (`ray_memory`).** The handout gives the memory overhead of an actor as the reason to create actors for the selected clients only. Part A runs 20 rounds with 4 actors per round and probes the process id of every actor with `os.kill(pid, 0)`, which reports whether the process exists. The prediction is that no process of an earlier round exists when a round ends.
+
+| quantity | value |
+|---|---|
+| client updates and distinct actor processes | 80 and 80 |
+| peak resident memory of one actor process, mean (range) | 273 MiB (264 to 277) |
+| actor processes of earlier rounds that exist at the end of a round, largest count | 0 |
+| actor processes of the same round that exist right after `ray.kill` | 1 to 3 |
+| seconds until all processes of a round have ended, mean and largest | 0.012 and 0.018 |
+| actor processes that exist 2 s after the last round | 0 |
+
+`ray.kill` returns before the process has ended, which explains the 1 to 3 processes found right after the call. They end within 0.018 s, whereas the first actor of the next round is ready 1.46 s after the round's last result in the 300-round run.
+
+Part B keeps $k$ actors alive at once, each after one training call, and reads their resident memory with `ps`. The prediction is that the total grows in proportion to $k$. The totals are 1,065, 2,138, 4,072 and 7,264 MiB for 4, 8, 16 and 32 actors, which is 266, 267, 255 and 227 MiB per actor. Creating the actors and training once takes 1.5, 2.2, 4.6 and 10.4 s. The total grows by a factor of 6.8 from 4 to 32 actors, against 8 for exact proportionality. The mean per actor is lower at 32 actors, and I did not determine the cause. The smallest and the largest mean give 22 to 26 GiB for 100 actors, which is 69% to 82% of the machine's 32 GiB, against 1.0 GiB measured for 4 actors. Resident memory counts shared library pages in every process, so these sums overstate the unique memory.
+
 ## Non-standard plots (question 2)
 
 **Actor timeline (FIG(ray_gantt)).** Each bar is one actor, drawn from the moment its constructor finished to the moment it returned its update; the number is the client id. The timeline shows the required structure directly: four actors per round, new actors in every round, and no actor that spans two rounds. It also shows where the time goes. The bars are 0.05 s wide and the rounds are 1.1 s apart, so the run spends more than 90% of its time starting worker processes and evaluating the global model.
@@ -424,10 +443,10 @@ At the batch size of this assignment the warm GPU and one CPU thread take the sa
 **Choices the handout leaves open.**
 
 - **One draw per image.** The noise is drawn once and stays fixed for all rounds, which models a client that perturbs its data once and discards the clean images. A fresh draw in every epoch would release many perturbed copies of one image, and their average converges to the clean image.
-- **Which data.** The training and validation splits are both local data, so both are perturbed. The test file stays clean, because it measures the final model on unperturbed inputs.
+- **Which data.** The training and validation splits are both local data, so both are perturbed. The test file stays clean, because it measures the final model on unperturbed inputs. The perturbed validation column gives the accuracy on perturbed held-out images of the same writers.
 - **No clipping.** Perturbed pixels are not clipped back to $[0, 1]$; test N6 measures the clipped variant.
 - **Diagnostic.** The code keeps the clean training images for one measurement only, the accuracy of the global model on them after each round ("clean training accuracy"). They never enter training.
-- **Seeds.** The scales $b$ = 0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3 and 5 were run with 3 seeds each at $C = 10\%$, $E = 5$, $B = 20$, $\eta = 0.5$ and 300 rounds. The noise seed equals the run seed, so the three runs of a scale differ in noise, initial weights and client sampling.
+- **Seeds.** The scales $b$ = 0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3 and 5 were run with 3 seeds each at $C = 10\%$, $E = 5$, $B = 20$, $\eta = 0.5$ and 300 rounds. The noise seed equals the run seed, so the three runs of a scale differ in noise, initial weights and client sampling. At one seed the noise pattern is the same at every scale and is multiplied by $b$, so the scales are compared on common random numbers.
 
 **What the noise guarantees.** Differential privacy with parameter $\varepsilon$ limits the ratio of the probabilities of any output under two candidate inputs to $e^{\varepsilon}$. Releasing $\tilde{x}$ satisfies it with $\varepsilon = \lVert x - x' \rVert_1 / b$ for two candidate images $x$ and $x'$ (test N2). One pixel changes by at most 1, so the guarantee per pixel is $\varepsilon = 1/b$. Two images differ by at most 784 in L1 norm, so the worst case per image is $784/b$; two training images differ by 37.6 on average, which gives $37.6/b$. The model weights are computed from perturbed images and labels only, so the server learns no more about the pixels than the perturbed images reveal. Labels are not perturbed and receive no protection.
 
@@ -460,7 +479,7 @@ At the batch size of this assignment the warm GPU and one CPU thread take the sa
 | 0.5 | 2 | 0.5 | 0.998 | 0.176 | 0.405 | 0.398 |
 | 0.5 | 2 | 0.005 | 0.459 | 0.255 | 0.534 | 0.532 |
 | 0.75 | 1.3 | 0.5 (unstable) | 0.533 | 0.070 | 0.029 | 0.032 |
-| 1 | 1 | 0.5 (unstable) | 0.188 | 0.056 | 0.058 | 0.061 |
+| 1 | 1 | 0.5 (unstable) | 0.187 | 0.056 | 0.058 | 0.061 |
 | 1 | 1 | 0.005 | 0.500 | 0.099 | 0.373 | 0.373 |
 | 1.5 | 0.67 | 0.5 (unstable) | 0.027 | 0.024 | 0.018 | 0.019 |
 | 2 | 0.5 | 0.5 (unstable) | 0.032 | 0.029 | 0.022 | 0.021 |
@@ -481,7 +500,7 @@ At the batch size of this assignment the warm GPU and one CPU thread take the sa
 
 ### Which b to choose (item 3)
 
-**I suggest $b = 1$ with a client learning rate of 0.005, on the condition that the noise is meant to hide the images. No tested $b$ gives both the Part 1 accuracy and that protection.** The table combines the accuracy above with two measured abilities of an observer of the perturbed images (test N4). The observer matches a perturbed image to its original among 2,000 candidate images and reads its label from the matched candidate.
+**I suggest $b = 1$ with a client learning rate of 0.005, on the condition that the noise is meant to hide the images. No tested $b$ gives both the Part 1 accuracy and that protection.** The table combines the accuracy above with two measured abilities of an observer of the perturbed images (test N4). The observer matches a perturbed image to its original among 2,000 candidate images and reads its label from the matched candidate. Each share is measured on 500 perturbed images, so its standard error is at most 2.2 points.
 
 | $b$ | $\varepsilon$ per pixel | $\varepsilon$ for an average pair of images | originals matched among 2,000 | label read | test accuracy |
 |---|---|---|---|---|---|
@@ -494,7 +513,7 @@ At the batch size of this assignment the warm GPU and one CPU thread take the sa
 
 - **Option 1: $b = 0.2$ with the Part 1 hyperparameters.** Test accuracy is 72.3%, which is 8.3 points below training without noise. An observer matches 98% of the perturbed images to their originals, and the per-pixel bound $e^{\varepsilon}$ is $e^{5} = 148$. This option loses 8.3 points of accuracy and hides almost no image.
 - **Option 2 (recommended): $b = 1$ with learning rate 0.005.** Test accuracy is 37.3% (seed 0), 6 times the majority-class rate. The per-pixel bound is $e^{1} = 2.7$, and the observer matches 30% of the images.
-- **Option 3: $b = 5$ with learning rate 0.005.** The observer matches none of 500 images, and test accuracy is 11.4%.
+- **Option 3: $b = 5$ with learning rate 0.005.** The observer matches none of the 500 perturbed images, and test accuracy is 11.4%.
 
 The reasons for Option 2 are the following.
 
@@ -514,7 +533,7 @@ The suggestion has three limits. The value 37.3% comes from one seed. The protec
 - **A model with one answer.** After a partial divergence the output biases dominate the clean inputs, and the model answers one class. Test accuracy is then the share of that class: 6.10% for "O" in all three seeds at $b = 1$, 3.18% for "8" at $b = 0.75$. Identical accuracy in all three seeds indicates this state.
 - **Pixels outside $[0, 1]$.** Clipping the perturbed pixels to $[0, 1]$ lowers test accuracy from 0.774 to 0.731 at $b = 0.1$ and from 0.675 to 0.515 at $b = 0.3$ (test N6). The page value is exactly 1 for 88.7% of the pixels, so clipping removes the positive half of their noise and shifts the mean page value by $b/2$. The clean test images do not have this shift. Clipping is a function of the released value, so it leaves the privacy guarantee unchanged.
 - **Perturbed validation data.** Validation accuracy on perturbed images is below the majority-class rate (0.058) for $b \ge 2$, so it cannot rank learning rates there. At $b = 2$ it chose learning rate 0.001 (test 0.161), while learning rates 0.005 and 0.02 reach 0.250 and 0.254. Leaving the validation split clean would fix the selection, but each client would then keep using clean images.
-- **Early stopping.** Stopping at the round of highest perturbed validation accuracy helps only where $\eta = 0.5$ memorises fastest: at $b = 0.5$ it gives 0.466 clean training accuracy against 0.382 at round 300. For the five runs with chosen learning rates it changes clean training accuracy by $-0.061$ to $+0.004$, so it does not help there.
+- **Early stopping.** Stopping at the round of highest perturbed validation accuracy helps only where $\eta = 0.5$ memorises fastest: at $b = 0.5$ it gives 0.466 clean training accuracy against 0.382 at round 300 (seed 0). For the five runs with chosen learning rates it changes clean training accuracy by $-0.061$ to $+0.004$, so it does not help there.
 - **Fewer local epochs.** $E = 1$ at $\eta = 0.5$ gives test accuracy 0.736 against 0.726 at $b = 0.2$, and 0.437 against 0.381 at $b = 0.5$. The gain at $b = 0.5$ is smaller than the gain from the lower learning rate (0.532).
 - **$b = 0$.** The noise code with $b = 0$ returns the Part 1 weights bit for bit (test N3). A negative or non-finite $b$ raises an error.
 - **Labels and counts.** The noise covers pixels only. Labels, the number of images per client and the class counts of a client are used exactly.
@@ -535,21 +554,21 @@ All four moments match, the Kolmogorov-Smirnov test on 200,000 sampled values do
 
 **N3. No noise reproduces Part 1 (`noise_checks`).** The run with $b = 0$ through the noise code path and the Part 1 run with seed 0 have identical final weights (`torch.equal`).
 
-**N4. Re-identification (`reident`).** An observer holds 2,000 candidate clean images and one perturbed image of one of them, and names the candidate with the smallest L1 distance, which is the maximum-likelihood guess under Laplace noise. Chance is 0.05%. The prediction is that matching succeeds while the ink energy of an image exceeds a small fraction of the noise energy $1568\,b^2$, because the observer needs to separate 2,000 candidates only. The ratio of ink energy to noise energy is 1.3 at $b = 0.1$, 0.052 at $b = 0.5$ and 0.013 at $b = 1$; the matched shares are 100%, 76.8% and 30.0%, and 0% to 0.6% for $b \ge 5$. The same test feeds perturbed test images to the Part 1 model: it scores 0.525 at $b = 0.2$, 0.357 at $b = 0.3$ and 0.169 at $b = 0.5$. The models trained on perturbed images score 0.519, 0.375 and 0.176 on perturbed validation images. Training on perturbed images therefore does not make the model more accurate on perturbed inputs.
+**N4. Re-identification (`reident`).** An observer holds 2,000 candidate clean images and one perturbed image of one of them, and names the candidate with the smallest L1 distance, which is the maximum-likelihood guess under Laplace noise. The test repeats this for 500 perturbed images per scale. Chance is 0.05%. The prediction is that matching succeeds while the ink energy of an image exceeds a small fraction of the noise energy $1568\,b^2$, because the observer needs to separate 2,000 candidates only. The ratio of ink energy to noise energy is 1.3 at $b = 0.1$, 0.052 at $b = 0.5$ and 0.013 at $b = 1$; the matched shares are 100%, 76.8% and 30.0%, and 0% to 0.6% for $b \ge 5$. The same test feeds perturbed test images to the Part 1 model: it scores 0.525 at $b = 0.2$, 0.357 at $b = 0.3$ and 0.169 at $b = 0.5$. The models trained on perturbed images score 0.519, 0.375 and 0.176 on perturbed validation images. Training on perturbed images therefore does not make the model more accurate on perturbed inputs.
 
 **N5. Stability of the sweep (`noise_checks`).** For every scale the validation file lists the input energy, the number of seeds whose training loss exceeded 20 and the rounds without a server update. It also lists the number of distinct classes that the final model predicts on the test set. The final models predict 49 to 62 classes for $b \le 0.5$, 3 or 4 classes at $b = 0.75$ and one class at $b = 1$. These counts separate "the noise removed the information" from "the optimiser failed", which the accuracy alone does not.
 
-**N6. Variants (`noise_checks`).** Leaving the validation split clean must not change any weight, because validation images never enter training. Measured at $b = 0.1$: training accuracy (0.9759) and test accuracy (0.7735) are identical to the standard run in all printed digits, and validation accuracy becomes 0.775, equal to test accuracy within 0.002. The clipped variant is described under the edge cases.
+**N6. Variants (`noise_checks`).** Leaving the validation split clean must not change any weight, because validation images never enter training. The final weights of the clean-validation run are identical to those of the standard run (`torch.equal`) at all 6 tested scales. At $b = 0.1$ the validation accuracy on clean images becomes 0.775, equal to test accuracy within 0.002. The clipped variant is described under the edge cases.
 
 **N7. Learning rate per noise scale (`noise_checks`).** The validation file `noise_checks.md` holds the table of all 31 runs. The prediction from the input energy is a stability limit on $\eta\, b^2$. The measured limit lies between 0.125 (19 of 19 runs stable) and 0.28 ($b = 0.75$ at $\eta = 0.5$, unstable in 2 of 3 seeds).
 
 ## Non-standard plots (Part 2)
 
+**Accuracy against re-identification (FIG(privacy_utility)).** This plot replaces the abstract parameter $b$ by a measured privacy outcome on the horizontal axis. A mechanism that protects images at low cost would produce points in the upper left corner. The measured points run from the lower left to the upper right, and the curve with the chosen learning rates lies up to 31 points above the curve at learning rate 0.5.
+
 **What the client releases and what the model learns (FIG(noise_gallery)).** Each column is one noise scale. Rows 1 to 4 show four training images with noise of that scale, with the prediction of the model trained at that scale. The bottom row shows the first-layer weight vector with the largest norm. The strokes remain visible at $b = 0.3$ and are not visible at $b = 1$, yet the model trained at $b = 1$ classifies two of the four perturbed images correctly. The weight vectors are stroke patterns up to $b = 1$ and unstructured at $b = 2$ and $b = 5$. A single image becomes illegible to the eye near $b = 0.5$, where the L1 matching of test N4 still succeeds for 77% of the images.
 
-![Four training images under seven noise scales, the predictions of the models trained at each scale, and one first-layer weight vector per model.](../results/figures/noise_gallery.png){ width=78% }
-
-**Accuracy against re-identification (FIG(privacy_utility)).** This plot replaces the abstract parameter $b$ by a measured privacy outcome on the horizontal axis. A mechanism that protects images at low cost would produce points in the upper left corner. The measured points run from the lower left to the upper right, and the curve with the chosen learning rates lies up to 31 points above the curve at learning rate 0.5.
+![Four training images under seven noise scales, the predictions of the models trained at each scale, and one first-layer weight vector per model.](../results/figures/noise_gallery.png){ width=84% }
 
 ## With three more months (Part 2)
 

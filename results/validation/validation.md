@@ -124,6 +124,16 @@ Prediction: handwritten letters such as c/C, o/O, s/S differ between cases mainl
 | seed3 | 0.8028 | 714 | 96 (13%) | 93 (13%) | 0.8293 | 0.8024 | 0.889 |
 | seed4 | 0.8053 | 705 | 96 (14%) | 101 (14%) | 0.8318 | 0.8049 | 0.889 |
 
+The random 80/20 split does not remove duplicates. 22 of the 6360 validation images have a pixel-identical copy with the same label in the training split of the same client, and 1 more have one at another client only. A model that had memorised its training images would classify these images almost perfectly. Removing them can change validation accuracy by at most 0.0036.
+
+| model | validation accuracy | without the duplicated images | on the duplicated images |
+|---|---|---|---|
+| seed0 | 0.8082 | 0.8083 | 0.783 |
+| seed1 | 0.8011 | 0.8007 | 0.913 |
+| seed2 | 0.8044 | 0.8046 | 0.739 |
+| seed3 | 0.8036 | 0.8037 | 0.783 |
+| seed4 | 0.8052 | 0.8051 | 0.826 |
+
 Most confused pairs for seed 0 (both directions added): I/l 46, 1/l 17, 0/O 15, C/e 14, M/m 12, F/f 11, 9/q 11, 5/S 11, 1/I 10, 0/o 10, D/O 9, P/p 8. Spearman correlation between a class's number of training images and its test accuracy: 0.79 (p = 2.1e-14).
 
 
@@ -185,6 +195,32 @@ Each actor reserves 1 CPU, so Ray may run at most as many actors at once as it h
 | 100 | 1 | 1.63 | 4.90 | 0.30 | 1 | 1 | True |
 | 100 | 2 | 1.63 | 3.31 | 0.42 | 2 | 2 | True |
 | 100 | 4 | 1.63 | 2.34 | 0.62 | 4 | 4 | True |
+
+
+## R11. Memory of actor processes and their lifetime
+
+The handout states that an actor has a large memory overhead and asks for actors of the selected clients only. Part A runs 20 rounds with 4 actors per round and checks, with `os.kill(pid, 0)` on every actor's process id, which actor processes still exist. Prediction: no process of an earlier round exists when a round ends.
+
+| quantity | value |
+|---|---|
+| client updates / distinct actor processes | 80 / 80 |
+| peak resident memory of one actor process, MiB (mean, min to max) | 273 (264 to 277) |
+| actor processes of earlier rounds that still exist at the end of a round (max over rounds) | 0 |
+| actor processes of the same round that still exist right after ray.kill (min to max) | 1 to 3 |
+| seconds until all processes of a round are gone after ray.kill (mean, max) | 0.012, 0.018 |
+| actor processes that exist 2 s after the last round | 0 |
+
+Part B keeps k actors alive at once, each after one training call, and reads their resident memory with `ps`. Prediction: the total grows in proportion to k, so 100 persistent actors would need 25 times the memory of 4.
+
+| actors alive at once | processes measured | total resident memory (MiB) | mean per actor (MiB) | seconds to create and train once |
+|---|---|---|---|---|
+| 4 | 4 | 1065 | 266 | 1.5 |
+| 8 | 8 | 2138 | 267 | 2.2 |
+| 16 | 16 | 4072 | 255 | 4.6 |
+| 32 | 32 | 7264 | 227 | 10.4 |
+
+Estimate for 100 actors alive at once, from the smallest and the largest mean per actor: 22.2 to 26.1 GiB, against 1.04 GiB measured for 4; the machine has 32 GiB of memory.
+Resident memory counts pages of shared libraries in every process, so the sum overstates the unique memory.
 
 
 ## N1. Distribution of the injected noise
@@ -270,6 +306,8 @@ An observer holds 2,000 candidate clean images and one perturbed image of one of
 | 1.0 | 0.1943 | 0.0560 | 0.0610 | 0.0577 | 0.0577 | 0.0610 | 0.1943 | 0.0577 | 0.0610 |
 | 2.0 | 0.0419 | 0.0401 | 0.0075 | 0.0577 | 0.0577 | 0.0610 | 0.0419 | 0.0094 | 0.0075 |
 | 5.0 | 0.0419 | 0.0407 | 0.0323 | 0.0577 | 0.0577 | 0.0610 | 0.0419 | 0.0285 | 0.0323 |
+
+Final weights of the clean-validation run identical to the standard run (torch.equal): 6 of 6 scales.
 
 **N7. Learning rate re-tuned per noise scale (seed 0, 300 rounds).** 'Chosen' marks the E = 5 run with the highest round-300 validation accuracy among the runs that did not diverge; the test column was not used for the choice. The column 'best round' gives the round with the highest validation accuracy and the clean training accuracy in that round, which is what early stopping on the perturbed validation split would return.
 

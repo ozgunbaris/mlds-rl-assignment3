@@ -99,6 +99,27 @@ def test_client_update_edge_cases():
     assert not s["finite"]
 
 
+def test_a_client_without_images_changes_nothing():
+    # loading: an empty client becomes an empty array, and the 80/20 split of 0 or 1 image is defined
+    x, y = data._to_arrays(dict(images=[], labels=[]))
+    assert x.shape == (0, 784) and y.shape == (0,)
+    g = np.random.default_rng(0)
+    clients = [(x, y), (g.random((10, 784), dtype=np.float32), g.integers(0, 62, 10)),
+               (g.random((1, 784), dtype=np.float32), g.integers(0, 62, 1))]
+    test = (g.random((3, 784), dtype=np.float32), g.integers(0, 62, 3))
+    f = data.build_federation(raw=(clients, test), noise_b=0.5)
+    assert list(f.n_tr) == [0, 8, 1] and list(f.n_va) == [0, 2, 0]
+    # training: with full-batch steps and all clients selected, an empty client must not change any weight
+    cfg = Config(rounds=3, clients_per_round=3, epochs=2, batch_size=0, lr=0.1, seed=0)
+    a, ha = run_fedavg(make_fed([0, 5, 7]), cfg)
+    b, hb = run_fedavg(make_fed([5, 7]), Config(**{**cfg.__dict__, "clients_per_round": 2}))
+    assert torch.equal(a, b) and list(ha["n_returned"]) == [0, 2, 2, 2]
+    assert np.isfinite(ha["train_acc"]).all() and np.isnan(ha["client_train_acc"][:, 0]).all()
+    assert np.isfinite(ha["client_train_acc"][:, 1:]).all()
+    w, h = run_fedavg(f, Config(rounds=2, clients_per_round=3, epochs=1, batch_size=4, lr=0.1, seed=0))
+    assert bool(torch.isfinite(w).all()) and list(h["n_returned"]) == [0, 2, 2]
+
+
 def centralized_gd(fed, w, lr, steps):
     w = w.clone().requires_grad_(True)
     for _ in range(steps):
@@ -292,6 +313,7 @@ def test_gpu_share_lets_all_actors_of_a_round_run_at_once():
             assert 0 < s <= 1 and G * int(1.0 / s + 1e-9) >= m          # every GPU hosts floor(1 / s) actors
 
 
+@needs_data
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a CUDA device")
 def test_gpu_actors_agree_with_the_cpu_loop_within_rounding(raw):
     from fedavg.ray_clients import RayRunner

@@ -8,6 +8,8 @@ clients per round, otherwise an equal share of one device.
 """
 import math
 import os
+import resource
+import sys
 import time
 
 import numpy as np
@@ -52,8 +54,10 @@ class ClientActor:
         w0 = torch.tensor(global_vec).to(self.device)
         vec, stats = client_update(w0, self.x, self.y, epochs, batch_size, lr, seed)
         vec = vec.cpu()
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss  # bytes on macOS, kilobytes on Linux
         stats.update(t_created=self.t_created, t_init0=self.t_init0, t_start=t0, t_end=time.time(), pid=os.getpid(),
-                     device=self.device.type, gpu_ids=self.gpu_ids)
+                     device=self.device.type, gpu_ids=self.gpu_ids,
+                     rss_mb=peak / (2 ** 20 if sys.platform == "darwin" else 2 ** 10))
         if self.device.type == "cuda":
             free, total = torch.cuda.mem_get_info()
             stats.update(gpu_name=torch.cuda.get_device_name(0), gpu_tensor_bytes=int(torch.cuda.max_memory_allocated()),
